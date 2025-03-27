@@ -1,11 +1,11 @@
 import cv2 as cv
 import numpy as np
 import math
-
 from numpy.ma.core import angle
+import imageio
 
 
-class ImgGeneration:
+class SpinningCube:
 
     def __init__(self):
         self.width, self.height = 640, 480
@@ -13,18 +13,31 @@ class ImgGeneration:
         self.img = self.fill_bg(cv.imread("inter.png"))
         self.frame = self.generate_cube()
 
-    def run(self):
-        while True:
+    import imageio
+
+    def run(self, record_gif=False, gif_filename="spinning_cube.gif", frame_count=100):
+        frames = []
+
+        for _ in range(frame_count):
             self.frame = self.generate_cube()
-            cv.imshow('Spinning Cube - Red Edges', self.frame)
+            cv.imshow('Spinning Cube - Internacional', self.frame)
+
+            if record_gif:
+                rgb_frame = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+                frames.append(rgb_frame)
+
             angle_chg = 0.02
             self.angle_x += angle_chg
             self.angle_y += angle_chg
             self.angle_z += angle_chg
+
             if cv.waitKey(10) == 27:
                 break
 
         cv.destroyAllWindows()
+
+        if record_gif:
+            imageio.mimsave(gif_filename, frames, fps=20)
 
     def fill_bg(self, img):
         mask = (img[:, :, :3] == 0).all(axis=2).astype(np.uint8) * 255
@@ -63,24 +76,12 @@ class ImgGeneration:
             [ 0,  0,  1]
         ]
 
-        edges = [
-            (0, 1), (0, 2), (0, 4),
-            (1, 3), (1, 5), (2, 3),
-            (2, 6), (3, 7), (4, 5),
-            (4, 6), (5, 7), (6, 7)
-        ]
-
         frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
         rotation_matrix = self.rotate()
         rotated_vertices = np.dot(cube_vertices, rotation_matrix.T)
 
         projected_points = [self.project(v, self.width, self.height) for v in rotated_vertices]
-
-        for edge in edges:
-            pt1 = projected_points[edge[0]]
-            pt2 = projected_points[edge[1]]
-            cv.line(frame, pt1, pt2, (120, 120, 120), 2)
 
         for face, normal in zip(faces, face_normals):
             rotated_normal = rotation_matrix @ np.array(normal)
@@ -164,12 +165,12 @@ class ImgGeneration:
 
         return rot_z @ rot_y @ rot_x
 
-    def project(self, point, width, height, scale=800):
+    def project(self, point, width, height, scale=600):
         x, y, z = point
         z += 5
         f = scale / z
         x, y = int(x * f + width / 2), int(-y * f + height / 2)
         return (x, y)
 
-sim = ImgGeneration()
-sim.run()
+sim = SpinningCube()
+sim.run(record_gif=False)
